@@ -71,6 +71,7 @@ public final class MainActivity extends Activity {
     private static final WebExtension.MessageDelegate IDLE_EXTENSION=new WebExtension.MessageDelegate(){
         @Override public void onConnect(WebExtension.Port p){sharedPort=p;p.setDelegate(IDLE_PORT);}
     };
+    private String pendingExternalUrl;
     private String home, current = "";
     private int zoom, scrollY, viewportHeight=100;
     private float viewportPan;
@@ -120,6 +121,7 @@ public final class MainActivity extends Activity {
         root.addView(pullCurtain, new FrameLayout.LayoutParams(-1,-1));
         showStartup();
         setContentView(root);
+        acceptExternalLink(getIntent());
         final boolean needsEngineConfig=runtime==null;
         new Thread(()->{
             String path=null;Exception failure=null;
@@ -202,8 +204,25 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);setIntent(intent);
+        if(acceptExternalLink(intent))return;
         if("io.todu.goweb.DOWNLOADS".equals(intent.getAction())){fileUi().showDownloads();return;}
         if(Intent.ACTION_MAIN.equals(intent.getAction()) && configured) {hideMenu();if(!homeReuse.canReuse(home,current))session.loadUri(home);}
+    }
+    private boolean acceptExternalLink(Intent intent){
+        if(intent==null||!Intent.ACTION_VIEW.equals(intent.getAction()))return false;
+        String target=ExternalLink.parse(intent.getDataString());
+        if(target==null){toast("链接无效");return true;}
+        pendingExternalUrl=target;
+        hideMenu();
+        if(fileUi!=null)fileUi.dismissPages();
+        for(Dialog dialog:new Dialog[]{homeEditor,bookmarksEditor,bookmarkAction,clearCacheDialog,infoDialog})if(dialog!=null)dialog.dismiss();
+        if(started&&configured&&session!=null&&session.isOpen())openPendingExternalLink();
+        return true;
+    }
+    private void openPendingExternalLink(){
+        String target=pendingExternalUrl;pendingExternalUrl=null;
+        hideError();
+        session.load(new GeckoSession.Loader().uri(target).flags(GeckoSession.LOAD_FLAGS_EXTERNAL));
     }
     private void initializeEngine() {
         try {
@@ -298,7 +317,8 @@ public final class MainActivity extends Activity {
                                 if("configured".equals(m.optString("type"))) {
                                     configured=true;
                                     String action=m.optString("action");
-                                    if("start".equals(action) && !started) { started=true;handler.removeCallbacks(startupTimeout);handler.removeCallbacks(startupHandshakeRetry);hideError(); session.loadUri(home); }
+                                    if("start".equals(action) && !started) { started=true;handler.removeCallbacks(startupTimeout);handler.removeCallbacks(startupHandshakeRetry);hideError(); if(pendingExternalUrl!=null)openPendingExternalLink();else session.loadUri(home); }
+                                    else if(pendingExternalUrl!=null)openPendingExternalLink();
                                     else if("home".equals(action)) { hideMenu(); session.loadUri(home); }
                                 }
                                 if("error".equals(m.optString("type"))) { android.util.Log.e("GoApp",m.optString("message")); showError("页面设置未能加载", () -> recreate()); }

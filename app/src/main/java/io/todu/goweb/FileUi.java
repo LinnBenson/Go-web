@@ -27,6 +27,11 @@ final class FileUi {
     private final java.util.concurrent.atomic.AtomicInteger uploadGeneration=new java.util.concurrent.atomic.AtomicInteger();
     private final UploadFiles uploadFiles;
     private boolean closed;
+    void dismissPages(){
+        if(downloads!=null)downloads.dismiss();
+        if(details!=null)details.dismiss();
+        if(downloadConfirm!=null)downloadConfirm.dismiss();
+    }
     void pause(){paused=true;if(downloadRefresh!=null)ui.removeCallbacks(downloadRefresh);}
     void resume(){paused=false;if(downloadRefresh!=null)downloadRefresh.run();}
     FileUi(MainActivity activity){this.activity=activity;uploadFiles=new UploadFiles(activity);}

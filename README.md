@@ -22,6 +22,24 @@
 
 缓存容量为 256 MiB。超过容量、网站使用不可缓存的响应变体、网站自行管理 Service Worker 缓存或设备清除应用数据时，不能保证所有资源一直保留；第三方网站的动态接口、登录验证和部分媒体仍需要网络。网站可能限制嵌入式浏览器登录。Google 的可访问性取决于设备网络。
 
+## 外部应用打开链接
+
+使用 `goweb://open?url=<编码后的网址>`，目标网址支持 HTTP 和 HTTPS。请将完整网址做 URL 编码，包含查询参数和 `#` 片段时也一样。
+
+例如：`goweb://open?url=https%3A%2F%2Fexample.com%2F`
+
+Android 调用示例：
+
+```java
+Uri link = new Uri.Builder().scheme("goweb").authority("open")
+    .appendQueryParameter("url", "https://example.com/search?q=hello&lang=zh")
+    .build();
+Intent intent = new Intent(Intent.ACTION_VIEW, link).setPackage("io.todu.goweb");
+startActivity(intent);
+```
+
+冷启动直接加载指定网址，不先加载启动页；应用已打开时在当前浏览会话中打开链接，不修改启动网址。启动过程中多次调用时使用最后收到的有效链接。
+
 ## 安装
 
 要求 Android 8.0 或更高版本。手表发布包使用 `armeabi-v7a`；仅支持 64 位的模拟器使用单独的 `arm64-v8a` 本地安装包。独立内核会增加安装包和运行内存占用。原生库在 APK 内压缩，安装时解压，启动时直接加载解压后的库；安装后的占用不会随 APK 大小同比缩小。
