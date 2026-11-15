@@ -16,35 +16,7 @@ import java.util.*;
 
 public final class MainActivity extends Activity {
     private static GeckoRuntime runtime;
-    private boolean recording,activityResumed,contentUnavailable;
-    private GeckoSession.SessionState lastPageState;
-    private final RecoveryGate recoveryGate=new RecoveryGate();
-    private void contentExited(GeckoSession source,String reason){
-        if(source!=session||isFinishing()||isDestroyed())return;
-        recording=false;contentUnavailable=true;homeReuse.invalidate();hideVaultFill();
-        android.util.Log.w("GoApp","Content process exit: "+reason+", foreground="+activityResumed);
-        if(activityResumed)handler.post(()->recoverContent(false));
-    }
-    private void recoverContent(boolean manual){
-        if(!contentUnavailable||!activityResumed||isFinishing()||isDestroyed()||session==null)return;
-        if(!manual&&!recoveryGate.allow(SystemClock.elapsedRealtime())){showError("页面恢复失败",()->recoverContent(true));return;}
-        GeckoSession.SessionState state=lastPageState;
-        String url=current.isEmpty()?home:current;
-        try{
-            // Only a closed content session is rebound. Normal UI transitions keep it attached.
-            if(session.isOpen())session.close();
-            browser.releaseSession();session.open(runtime);browser.setSession(session);
-            session.setPriorityHint(GeckoSession.PRIORITY_HIGH);session.setActive(true);
-            contentUnavailable=false;hideError();applyViewportHeight();
-            if(started){if(state!=null)session.restoreState(state);else session.loadUri(url);}
-            else{startupConfigurationSent=false;configureStartup();}
-        }catch(Exception failure){contentUnavailable=true;showError("页面恢复失败",()->recoverContent(true));}
-    }
-    private void refreshPage(){
-        hideMenu();hideError();
-        if(contentUnavailable){recoverContent(true);return;}
-        if(configured&&session!=null&&session.isOpen())session.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);
-    }
+    private boolean recording;
     private final java.util.Set<Integer> externalRequests=new java.util.HashSet<>();
     boolean protectedInteraction(){
         if(isFinishing()||isDestroyed())return false;
@@ -57,6 +29,16 @@ public final class MainActivity extends Activity {
         catch(RuntimeException error){externalRequests.remove(request);throw error;}
     }
     private GeckoSession session;
+    // Rendering visibility belongs to GeckoView; process importance belongs to the whole app.
+    void updateBrowserImportance(boolean keepAlive){
+        if(session!=null&&session.isOpen())session.setPriorityHint(keepAlive?GeckoSession.PRIORITY_HIGH:GeckoSession.PRIORITY_DEFAULT);
+    }
+    private void contentStopped(GeckoSession source,String reason){
+        if(source!=session||isFinishing()||isDestroyed())return;
+        android.util.Log.w("GoApp","Content stopped: "+reason+", appVisible="+BrowserApplication.visible(this));
+        recording=false;homeReuse.invalidate();hideVaultFill();
+        showError("页面已停止",()->recreate());
+    }
     private final HomePageReuse homeReuse=new HomePageReuse();
     private boolean firstFrameReady, engineConfigReady;
     private String preparedEngineConfig;
@@ -265,7 +247,6 @@ public final class MainActivity extends Activity {
             });
             session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
                 @Override public void onPageStart(GeckoSession s, String url) { recording=false;homeReuse.start(home,url);hideVaultFill();scrollY=0; viewportPan=0; pageTitle="";pageIcon=""; pageAtBottom=false; roundSpace=false; setRoundOffset(0); loadingUrl=url;loadDomainSettings(url); loadStart=SystemClock.elapsedRealtime(); hideError(); progress.begin(); }
-                @Override public void onSessionStateChange(GeckoSession s,GeckoSession.SessionState state){if(s==session&&s.isOpen())lastPageState=state;}
                 @Override public void onProgressChange(GeckoSession s, int value) { progress.advance(value); }
                 @Override public void onPageStop(GeckoSession s, boolean success) {
                     homeReuse.stop(home,current,success);
@@ -287,14 +268,13 @@ public final class MainActivity extends Activity {
                     if(started&&(loadingUrl.startsWith("https://")||loadingUrl.startsWith("http://")))finishStartup();
                     android.util.Log.i("GoApp", "firstPaintMs="+(SystemClock.elapsedRealtime()-loadStart));
                     if(!firstPaintLogged){firstPaintLogged=true;android.util.Log.i("GoApp","activityFirstPaintMs="+(SystemClock.elapsedRealtime()-activityStart));} }
-                @Override public void onKill(GeckoSession s){contentExited(s,"killed");}
-                @Override public void onCrash(GeckoSession s){contentExited(s,"crashed");}
+                @Override public void onCrash(GeckoSession s) { contentStopped(s,"crash"); }
+                @Override public void onKill(GeckoSession s) { contentStopped(s,"kill"); }
             });
             browserPrompts=new BrowserPrompts(this);session.setPromptDelegate(browserPrompts);
             session.setMediaDelegate(new GeckoSession.MediaDelegate(){@Override public void onRecordingStatusChanged(GeckoSession s,GeckoSession.MediaDelegate.RecordingDevice[] devices){recording=false;for(GeckoSession.MediaDelegate.RecordingDevice device:devices)if(device.status==GeckoSession.MediaDelegate.RecordingDevice.Status.RECORDING)recording=true;}});
             session.open(runtime); browser.setSession(session);
-            boolean visible=BrowserApplication.visible(this)||protectedInteraction();
-            session.setPriorityHint(visible?GeckoSession.PRIORITY_HIGH:GeckoSession.PRIORITY_DEFAULT);session.setActive(visible);
+            updateBrowserImportance(BrowserApplication.visible(this)||protectedInteraction());
             runtime.getWebExtensionController().ensureBuiltIn("resource://android/assets/browser/", "browser@goapp.todu.io")
                 .accept(extension -> {
                     if(isFinishing()||isDestroyed())return;
@@ -397,7 +377,7 @@ public final class MainActivity extends Activity {
         vaultPicking=false;String token=vaultRequestToken;vaultRequestToken="";
         try(VaultFillTransfer.Entry entry=VaultFillTransfer.take(token)){
             JSONObject message=new JSONObject();
-            if(result==RESULT_OK&&entry!=null&&current.equals(vaultRequestTop)&&port!=null&&session!=null&&session.isOpen()&&!contentUnavailable){
+            if(result==RESULT_OK&&entry!=null&&current.equals(vaultRequestTop)&&port!=null&&session!=null&&session.isOpen()){
                 message.put("type","vaultFill");message.put("token",token);
                 message.put("account",new String(entry.account));message.put("password",new String(entry.password));
             }else message.put("type","vaultCancel");
@@ -553,7 +533,7 @@ public final class MainActivity extends Activity {
             zoomControl=new ArcRangeControl(false);addView(zoomControl);
             // Six actions per page; the second page currently contains three actions.
             addView(menuIcon(R.drawable.ic_home,"主页",false,()->{hideMenu();if(configured)session.loadUri(home);}));
-            addView(menuIcon(R.drawable.ic_refresh,"刷新",false,MainActivity.this::refreshPage));
+            addView(menuIcon(R.drawable.ic_refresh,"刷新",false,()->{hideMenu();hideError();if(configured)session.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);}));
             clearCacheButton=menuIcon(R.drawable.ic_clear_cache,"清除所有缓存",false,MainActivity.this::confirmClearCaches);
             clearCacheButton.setEnabled(!clearingCache);clearCacheButton.setAlpha(clearingCache?.45f:1f);addView(clearCacheButton);
             addView(menuIcon(R.drawable.ic_open_url,"打开 URL",false,()->editAddress(false)));
@@ -1062,21 +1042,8 @@ public final class MainActivity extends Activity {
     @Override public void onTrimMemory(int level){
         super.onTrimMemory(level);if(bookmarkIcons!=null)bookmarkIcons.trimMemory();
     }
-    @Override protected void onPause(){activityResumed=false;if(fileUi!=null)fileUi.pause();hideVaultFill();if(startupAnimation!=null)startupAnimation.stop();root.cancelPull();super.onPause();}
-    @Override protected void onStop(){
-        super.onStop();
-        handler.post(()->{
-            if(!activityResumed&&!isDestroyed()&&session!=null&&session.isOpen()&&!BrowserApplication.visible(this)&&!protectedInteraction()){
-                session.setPriorityHint(GeckoSession.PRIORITY_DEFAULT);session.setActive(false);
-            }
-        });
-    }
-    @Override protected void onResume(){
-        super.onResume();activityResumed=true;
-        if(fileUi!=null)fileUi.resume();if(startupAnimation!=null)startupAnimation.start();
-        if(contentUnavailable)handler.post(()->recoverContent(false));
-        else if(session!=null&&session.isOpen()){session.setPriorityHint(GeckoSession.PRIORITY_HIGH);session.setActive(true);}
-    }
+    @Override protected void onPause(){if(fileUi!=null)fileUi.pause();hideVaultFill();if(startupAnimation!=null)startupAnimation.stop();root.cancelPull();super.onPause();}
+    @Override protected void onResume(){super.onResume();if(fileUi!=null)fileUi.resume();if(startupAnimation!=null)startupAnimation.start();}
     @Override protected void onDestroy(){
         if(fileUi!=null){fileUi.close();fileUi=null;}
         bookmarkIcons.close();VaultFillTransfer.clear();finishStartup();progress.hide();root.cancelPull();hideMenu();
