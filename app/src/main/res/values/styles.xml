@@ -3,4 +3,12 @@
 <item name="android:windowExitAnimation">@anim/page_exit</item>
 </style><!-- Web content keeps horizontal gestures; MainActivity provides narrow edge back. -->
 <style name="GoBrowserTheme" parent="GoTheme"><item name="android:windowSwipeToDismiss">false</item></style>
+<!-- Keep the underlying browser surface alive while the opaque vault UI is shown. -->
+<style name="GoOverlayTheme" parent="GoTheme">
+<item name="android:windowIsTranslucent">true</item>
+<item name="android:windowIsFloating">false</item>
+<item name="android:windowBackground">@android:color/transparent</item>
+<item name="android:backgroundDimEnabled">false</item>
+<item name="android:windowDisablePreview">true</item>
+</style>
 </resources>
