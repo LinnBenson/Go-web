@@ -1,0 +1,51 @@
+{
+  "manifest_version": 2,
+  "name": "Go web 页面支持",
+  "version": "1.0.40",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "browser@goapp.todu.io"
+    }
+  },
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>",
+    "nativeMessaging",
+    "geckoViewAddons",
+    "storage",
+    "tabs",
+    "browsingData"
+  ],
+  "background": {
+    "scripts": [
+      "background.js",
+      "vault-background.js",
+      "favicon-background.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js",
+        "favicon-content.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "vault-content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}

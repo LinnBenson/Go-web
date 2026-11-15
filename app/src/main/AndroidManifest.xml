@@ -1,0 +1,26 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+ <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
+ <uses-feature android:name="android.hardware.type.watch" android:required="true"/>
+ <application android:name=".BrowserApplication" android:label="Go web" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/GoTheme" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:usesCleartextTraffic="true" android:supportsRtl="true" android:hardwareAccelerated="true">
+  <meta-data android:name="com.google.android.wearable.standalone" android:value="true"/>
+  <service android:name=".DownloadService" android:exported="false" android:foregroundServiceType="dataSync"/>
+  <provider android:name="androidx.core.content.FileProvider" android:authorities="io.todu.goweb.files" android:exported="false" android:grantUriPermissions="true">
+   <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/download_paths"/>
+  </provider>
+  <service android:name=".OpenAppComplicationService" android:process=":shortcut" android:exported="true"
+      android:label="Go web" android:icon="@drawable/ic_complication_go"
+      android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+   <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"/></intent-filter>
+   <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="ICON,SMALL_IMAGE"/>
+   <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="0"/>
+  </service>
+  <activity android:name=".VaultActivity" android:exported="false" android:excludeFromRecents="true" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
+  <activity android:theme="@style/GoBrowserTheme" android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:taskAffinity="" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+ </application>
+</manifest>

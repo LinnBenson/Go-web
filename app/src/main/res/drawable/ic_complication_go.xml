@@ -1,0 +1,6 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="424" android:viewportHeight="424">
+    <!-- Original Go emblem silhouette: rounded opening and diagonal crossbar. -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M319,125 C294,93 255,74 214,74 C136,74 73,137 73,215 C73,293 136,356 214,356 C275,356 324,311 338,245 L361,215 C367,207 363,200 354,200 L241,200 C228,200 219,205 210,214 L188,239 C182,246 186,251 194,251 L276,251 C264,282 244,298 214,298 C169,298 132,261 132,216 C132,170 169,133 214,133 C237,133 256,143 272,158 C284,170 303,171 316,161 C329,152 328,136 319,125 Z"/>
+</vector>
