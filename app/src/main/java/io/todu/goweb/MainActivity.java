@@ -16,7 +16,26 @@ import java.util.*;
 
 public final class MainActivity extends Activity {
     private static GeckoRuntime runtime;
-    private boolean recording;
+    private boolean recording,activityResumed,displayNeedsRestore,contentUnavailable;
+    private final Runnable restoreDisplay=this::restoreBrowserDisplay;
+    private void restoreBrowserDisplay(){
+        if(!activityResumed||!hasWindowFocus()||isFinishing()||isDestroyed()||browser==null||session==null||contentUnavailable)return;
+        if(!browser.isAttachedToWindow()||browser.getWidth()==0||browser.getHeight()==0)return;
+        if(!displayNeedsRestore||protectedInteraction())return;
+        displayNeedsRestore=false;
+        // Reconnect the existing compositor surface without closing or reloading the page.
+        browser.releaseSession();browser.setSession(session);session.setActive(true);
+        applyViewportHeight();browser.invalidate();
+    }
+    @Override public void onWindowFocusChanged(boolean focused){
+        super.onWindowFocusChanged(focused);
+        if(focused&&displayNeedsRestore){handler.removeCallbacks(restoreDisplay);handler.postDelayed(restoreDisplay,180);}
+    }
+    private void refreshPage(){
+        hideMenu();hideError();
+        if(contentUnavailable){recreate();return;}
+        if(configured){displayNeedsRestore=true;restoreDisplay.run();session.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);}
+    }
     private final java.util.Set<Integer> externalRequests=new java.util.HashSet<>();
     boolean protectedInteraction(){
         if(isFinishing()||isDestroyed())return false;
@@ -258,7 +277,8 @@ public final class MainActivity extends Activity {
                     if(started&&(loadingUrl.startsWith("https://")||loadingUrl.startsWith("http://")))finishStartup();
                     android.util.Log.i("GoApp", "firstPaintMs="+(SystemClock.elapsedRealtime()-loadStart));
                     if(!firstPaintLogged){firstPaintLogged=true;android.util.Log.i("GoApp","activityFirstPaintMs="+(SystemClock.elapsedRealtime()-activityStart));} }
-                @Override public void onCrash(GeckoSession s) { recording=false;homeReuse.invalidate();showError("页面已停止", () -> recreate()); }
+                @Override public void onKill(GeckoSession s){recording=false;contentUnavailable=true;homeReuse.invalidate();showError("页面已停止",()->recreate());}
+                @Override public void onCrash(GeckoSession s) { recording=false;contentUnavailable=true;homeReuse.invalidate();showError("页面已停止", () -> recreate()); }
             });
             browserPrompts=new BrowserPrompts(this);session.setPromptDelegate(browserPrompts);
             session.setMediaDelegate(new GeckoSession.MediaDelegate(){@Override public void onRecordingStatusChanged(GeckoSession s,GeckoSession.MediaDelegate.RecordingDevice[] devices){recording=false;for(GeckoSession.MediaDelegate.RecordingDevice device:devices)if(device.status==GeckoSession.MediaDelegate.RecordingDevice.Status.RECORDING)recording=true;}});
@@ -521,7 +541,7 @@ public final class MainActivity extends Activity {
             zoomControl=new ArcRangeControl(false);addView(zoomControl);
             // Six actions per page; the second page currently contains three actions.
             addView(menuIcon(R.drawable.ic_home,"主页",false,()->{hideMenu();if(configured)session.loadUri(home);}));
-            addView(menuIcon(R.drawable.ic_refresh,"刷新",false,()->{hideMenu();hideError();if(configured)session.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);}));
+            addView(menuIcon(R.drawable.ic_refresh,"刷新",false,MainActivity.this::refreshPage));
             clearCacheButton=menuIcon(R.drawable.ic_clear_cache,"清除所有缓存",false,MainActivity.this::confirmClearCaches);
             clearCacheButton.setEnabled(!clearingCache);clearCacheButton.setAlpha(clearingCache?.45f:1f);addView(clearCacheButton);
             addView(menuIcon(R.drawable.ic_open_url,"打开 URL",false,()->editAddress(false)));
@@ -784,6 +804,7 @@ public final class MainActivity extends Activity {
         openFullDialog(dialog);
     }
     private void openFullDialog(Dialog dialog){
+        displayNeedsRestore=true;
         Window window=dialog.getWindow();
         if(window!=null){
             window.setWindowAnimations(R.style.PageWindowAnimation);
@@ -1030,8 +1051,8 @@ public final class MainActivity extends Activity {
     @Override public void onTrimMemory(int level){
         super.onTrimMemory(level);if(bookmarkIcons!=null)bookmarkIcons.trimMemory();
     }
-    @Override protected void onPause(){if(fileUi!=null)fileUi.pause();hideVaultFill();if(startupAnimation!=null)startupAnimation.stop();root.cancelPull();super.onPause();if(session!=null)session.setActive(false);}
-    @Override protected void onResume(){super.onResume();if(fileUi!=null)fileUi.resume();if(startupAnimation!=null)startupAnimation.start();if(session!=null)session.setActive(true);}
+    @Override protected void onPause(){activityResumed=false;displayNeedsRestore=true;handler.removeCallbacks(restoreDisplay);if(fileUi!=null)fileUi.pause();hideVaultFill();if(startupAnimation!=null)startupAnimation.stop();root.cancelPull();super.onPause();if(session!=null)session.setActive(false);}
+    @Override protected void onResume(){super.onResume();activityResumed=true;if(displayNeedsRestore){handler.removeCallbacks(restoreDisplay);handler.postDelayed(restoreDisplay,180);}if(fileUi!=null)fileUi.resume();if(startupAnimation!=null)startupAnimation.start();if(session!=null)session.setActive(true);}
     @Override protected void onDestroy(){
         if(fileUi!=null){fileUi.close();fileUi=null;}
         bookmarkIcons.close();VaultFillTransfer.clear();finishStartup();progress.hide();root.cancelPull();hideMenu();
