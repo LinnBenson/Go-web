@@ -532,7 +532,7 @@ public final class MainActivity extends Activity {
             heightControl=new ArcRangeControl(true);addView(heightControl);
             zoomControl=new ArcRangeControl(false);addView(zoomControl);
             // Six actions per page; the second page currently contains three actions.
-            addView(menuIcon(R.drawable.ic_home,"主页",false,()->{hideMenu();if(configured)session.loadUri(home);}));
+            addView(menuIcon(R.drawable.ic_home,"主页",false,MainActivity.this::openHomeAsRoot));
             addView(menuIcon(R.drawable.ic_refresh,"刷新",false,()->{hideMenu();hideError();if(configured)session.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE);}));
             clearCacheButton=menuIcon(R.drawable.ic_clear_cache,"清除所有缓存",false,MainActivity.this::confirmClearCaches);
             clearCacheButton.setEnabled(!clearingCache);clearCacheButton.setAlpha(clearingCache?.45f:1f);addView(clearCacheButton);
@@ -1021,10 +1021,18 @@ public final class MainActivity extends Activity {
         if(menuTopCover!=null){root.removeView(menuTopCover);menuTopCover=null;}
         zoomControl=null;heightControl=null;clearCacheButton=null;adjustingRange=false;
     }
+    private void openHomeAsRoot() {
+        hideMenu();
+        if(!configured||session==null||!session.isOpen())return;
+        hideError();canBack=false;
+        // Keep the live engine, cookies and cache. Only reset this session's navigation stack.
+        session.purgeHistory();
+        session.load(new GeckoSession.Loader().uri(home).flags(GeckoSession.LOAD_FLAGS_REPLACE_HISTORY));
+    }
     private void goBack() {
         if(menu!=null){hideMenu();return;}
         root.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK);
-        if(canBack)session.goBack();else moveTaskToBack(true);
+        if(canBack)session.goBack();else ((BrowserApplication)getApplication()).exitBrowser();
     }
     @Override public void onBackPressed() { goBack(); }
     private void showError(String message,Runnable retry) {
