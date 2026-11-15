@@ -8,6 +8,7 @@ function zoomFor(url) {
 }
 const homeTabs = new Set();
 const homeRedirects = new Set();
+browser.tabs.onRemoved.addListener(tabId => homeTabs.delete(tabId));
 const staticTypes = new Set(['main_frame', 'stylesheet', 'script', 'image', 'font', 'web_manifest']);
 // Fetch/preload/object requests do not always carry an image/font destination.
 // Require a static filename AND a compatible response MIME for these fallback cases.

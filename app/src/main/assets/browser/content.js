@@ -26,13 +26,18 @@
   }
   const observer = new MutationObserver(() => apply());
   observer.observe(document, {childList:true, subtree:true});
-  document.addEventListener('DOMContentLoaded', () => { settled=true; apply(); observer.disconnect(); }, {once:true});
+  document.addEventListener('DOMContentLoaded', () => { settled=true; apply(); observer.disconnect(); observedHead=null; }, {once:true});
   browser.runtime.sendMessage({type:'config'}).then(c => { zoom=c.zoom; apply(); }).catch(() => apply());
   browser.runtime.onMessage.addListener(m => { if(m.type==='zoom') { zoom=m.zoom; apply(); } });
   apply();
   // Read-only viewport bounds for native round-screen spacers; never modify site DOM or APIs.
   let boundsFrame = 0;
   let lastBounds = null;
+  let boundsObserver = null;
+  function observeBounds(){
+    if(!boundsObserver)boundsObserver=new ResizeObserver(reportBounds);
+    if(document.documentElement)boundsObserver.observe(document.documentElement);
+  }
   function reportBounds() {
     if (boundsFrame || document.hidden) return;
     boundsFrame = setTimeout(() => {
@@ -51,8 +56,8 @@
   }
   addEventListener('scroll', reportBounds, {passive:true});
   addEventListener('resize', reportBounds, {passive:true});
-  addEventListener('pageshow', () => { lastBounds = null; reportBounds(); });
-  addEventListener('pagehide', () => { clearTimeout(boundsFrame); boundsFrame = 0; });
+  addEventListener('pageshow', () => { observeBounds(); lastBounds = null; reportBounds(); });
+  addEventListener('pagehide', () => { clearTimeout(boundsFrame); boundsFrame = 0; if(boundsObserver){boundsObserver.disconnect();boundsObserver=null;} });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { clearTimeout(boundsFrame); boundsFrame = 0; }
     else { lastBounds = null; reportBounds(); }
@@ -62,7 +67,7 @@
     window.visualViewport.addEventListener('resize', reportBounds, {passive:true});
   }
   document.addEventListener('DOMContentLoaded', () => {
-    new ResizeObserver(reportBounds).observe(document.documentElement);
+    observeBounds();
     reportBounds();
   }, {once:true});
 })();

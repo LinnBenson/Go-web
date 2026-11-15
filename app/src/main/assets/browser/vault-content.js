@@ -4,6 +4,8 @@
   let token = '';
   let armed = null;
   let timer = 0;
+  let armedTimer = 0;
+  function clearArmed() { clearTimeout(armedTimer); armedTimer=0; armed=null; }
   const send = message => browser.runtime.sendMessage(message).catch(() => {});
   const usable = el => el instanceof HTMLInputElement && el.isConnected && !el.disabled && !el.readOnly &&
     el.getClientRects().length > 0 && (!el.checkVisibility || el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})) && getComputedStyle(el).visibility === 'visible' && getComputedStyle(el).display !== 'none';
@@ -25,10 +27,10 @@
     send({type:'vaultFocus', token, visible:true, y:rect.bottom / Math.max(1,innerHeight)});
   }
   document.addEventListener('focusin', report, true);
-  document.addEventListener('focusout', () => { timer = setTimeout(report,100); }, true);
+  document.addEventListener('focusout', () => { clearTimeout(timer); timer = setTimeout(report,100); }, true);
   addEventListener('scroll', () => { if(target){clearTimeout(timer);timer=setTimeout(report,80);} }, {passive:true,capture:true});
   addEventListener('resize', () => { if(target)report(); });
-  addEventListener('pagehide', () => { armed=null;target=null;token='';clearTimeout(timer); });
+  addEventListener('pagehide', () => { clearArmed();target=null;token='';clearTimeout(timer); });
   function accountFor(pass) {
     const scope = pass.form || pass.getRootNode();
     const fields = Array.from(scope.querySelectorAll('input')).filter(el => usable(el) &&
@@ -48,13 +50,15 @@
   browser.runtime.onMessage.addListener(message => {
     if(message.type==='vaultArm') {
       if(message.token!==token || !password(target))return Promise.resolve({ok:false});
+      clearArmed();
       armed={token, pass:target, account:accountFor(target), url:location.href, form:target.form,
         action:target.form?.action || '', expires:Date.now()+180000};
+      armedTimer=setTimeout(clearArmed,180000);
       return Promise.resolve({ok:true});
     }
-    if(message.type==='vaultCancel'){armed=null;return;}
+    if(message.type==='vaultCancel'){clearArmed();return;}
     if(message.type!=='vaultFill')return;
-    const a=armed;armed=null;
+    const a=armed;clearArmed();
     if(!a || a.token!==message.token || Date.now()>a.expires || location.href!==a.url ||
        !password(a.pass) || a.pass.form!==a.form || (a.form?.action || '')!==a.action ||
        typeof message.password!=='string' || message.password.length>4096 || typeof message.account!=='string' || message.account.length>256)
