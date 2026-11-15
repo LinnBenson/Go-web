@@ -63,6 +63,7 @@ final class FileUi {
     }
     private void showItem(DownloadFiles.Item item){
         if(details!=null)details.dismiss();Dialog dialog=new Dialog(activity);details=dialog;dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setOnDismissListener(d->{if(details==dialog)details=null;});
         LinearLayout list=column();TextView name=centeredText(item.name,13);name.setMaxLines(3);name.setEllipsize(TextUtils.TruncateAt.END);row(list,name);
         row(list,centeredText(status(item),12));
         if(item.active())row(list,action("取消下载",()->{files().cancel(item);dialog.dismiss();}));
@@ -76,6 +77,7 @@ final class FileUi {
     }
     private void confirmDelete(DownloadFiles.Item item){
         Dialog dialog=new Dialog(activity);details=dialog;dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setOnDismissListener(d->{if(details==dialog)details=null;});
         LinearLayout body=column();row(body,centeredText("删除此文件及下载记录？",13));
         LinearLayout actions=activity.singleClose(dialog);actions.addView(activity.plainIcon(R.drawable.ic_check,"删除",()->{files().delete(item,ok->{if(!ok&&!activity.isDestroyed())activity.toast("文件未能删除");});dialog.dismiss();}));
         activity.showPinnedDialog(dialog,"删除下载",body,actions,true);

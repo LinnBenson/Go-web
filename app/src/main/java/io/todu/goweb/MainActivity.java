@@ -37,7 +37,7 @@ public final class MainActivity extends Activity {
         if(source!=session||isFinishing()||isDestroyed())return;
         android.util.Log.w("GoApp","Content stopped: "+reason+", appVisible="+BrowserApplication.visible(this));
         recording=false;homeReuse.invalidate();hideVaultFill();
-        showError("页面已停止",()->recreate());
+        showError("crash".equals(reason)?"此页面崩溃":"页面被终止",()->recreate());
     }
     private final HomePageReuse homeReuse=new HomePageReuse();
     private boolean firstFrameReady, engineConfigReady;
