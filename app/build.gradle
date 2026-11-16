@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'io.todu.goweb'
     compileSdkVersion 'android-37.2'
-    defaultConfig { applicationId 'io.todu.goweb'; minSdk 26; targetSdk 35; versionCode 69; versionName '1.1.9' }
+    defaultConfig { applicationId 'io.todu.goweb'; minSdk 26; targetSdk 35; versionCode 72; versionName '1.1.12' }
     splits { abi { enable true; reset(); include 'armeabi-v7a', 'arm64-v8a'; universalApk false } }
     // Store complete native libraries compressed; Android extracts them at install time.
     // Loading then uses normal native files, without decompressing on each launch.

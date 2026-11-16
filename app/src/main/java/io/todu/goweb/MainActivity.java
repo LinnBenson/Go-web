@@ -265,7 +265,7 @@ public final class MainActivity extends Activity {
                 }
             });
             session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
-                @Override public void onPageStart(GeckoSession s, String url) { recording=false;homeReuse.start(home,url);hideVaultFill();scrollY=0; viewportPan=0; pageTitle="";pageIcon=""; pageAtBottom=false; roundSpace=false; setRoundOffset(0); loadingUrl=url;loadDomainSettings(url); loadStart=SystemClock.elapsedRealtime(); hideError(); progress.begin(); }
+                @Override public void onPageStart(GeckoSession s, String url) { recording=false;homeReuse.start(home,url);hideVaultFill();scrollY=0; viewportPan=0; pageTitle="";pageIcon=""; pageAtBottom=false; setRoundOffset(0); loadingUrl=url;loadDomainSettings(url); loadStart=SystemClock.elapsedRealtime(); hideError(); progress.begin(); }
                 @Override public void onProgressChange(GeckoSession s, int value) { progress.advance(value); }
                 @Override public void onPageStop(GeckoSession s, boolean success) {
                     homeReuse.stop(home,current,success);
@@ -427,7 +427,9 @@ public final class MainActivity extends Activity {
         roundBottom.setTranslationY(root.getHeight()+maxViewportPan()-viewportPan+roundOffset);
     }
     private void toggleRoundSpace(){
+        if(settingsDomain.isEmpty())return;
         roundSpace=!roundSpace;
+        saveDomainSettings();
         setRoundOffset(roundSpace?(scrollY<=1&&viewportPan<=1?root.getHeight()/2f:pageAtBottom&&viewportPan>=maxViewportPan()-1?-root.getHeight()/2f:0):0);
         root.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
     }
@@ -680,12 +682,13 @@ public final class MainActivity extends Activity {
         JSONObject profile=readSiteSettings().optJSONObject(domain);
         zoom=profile==null?70:Math.max(20,Math.min(200,profile.optInt("zoom",70)));
         viewportHeight=profile==null?100:Math.max(100,Math.min(300,profile.optInt("height",100)));
-        viewportPan=0;if(root!=null)applyViewportHeight();
+        roundSpace=profile!=null&&profile.optBoolean("roundSpace",false);
+        roundOffset=0;viewportPan=0;if(root!=null)applyViewportHeight();
         if(zoomControl!=null)zoomControl.preview(zoom);if(heightControl!=null)heightControl.preview(viewportHeight);
     }
     private void saveDomainSettings(){
         if(settingsDomain.isEmpty())return;
-        try{JSONObject all=readSiteSettings(),profile=new JSONObject();profile.put("zoom",zoom);profile.put("height",viewportHeight);all.put(settingsDomain,profile);prefs.edit().putString("siteSettings",all.toString()).apply();}
+        try{JSONObject all=readSiteSettings(),profile=new JSONObject();profile.put("zoom",zoom);profile.put("height",viewportHeight);profile.put("roundSpace",roundSpace);all.put(settingsDomain,profile);prefs.edit().putString("siteSettings",all.toString()).apply();}
         catch(Exception error){toast("设置未能保存");}
     }
     private void clearAllCaches(){
@@ -711,7 +714,7 @@ public final class MainActivity extends Activity {
             try{JSONObject clear=new JSONObject();clear.put("type","faviconClear");sendVault(clear);}catch(Exception ignored){}
             siteSettings=new JSONObject();siteSettingsSent=false;
             prefs.edit().remove("siteSettings").remove("zoom").remove("viewportHeight").apply();
-            zoom=70;viewportHeight=100;viewportPan=0;applyViewportHeight();
+            zoom=70;viewportHeight=100;roundSpace=false;roundOffset=0;viewportPan=0;applyViewportHeight();
             if(zoomControl!=null)zoomControl.preview(zoom);if(heightControl!=null)heightControl.preview(viewportHeight);
             configure("zoom",false);
         }
@@ -745,7 +748,7 @@ public final class MainActivity extends Activity {
 
         EditText input=new EditText(this);input.setSingleLine(true);input.setTextSize(13);
         input.setTextColor(FG);input.setHintTextColor(Color.rgb(137,157,158));input.setHint("https://");
-        input.setSelectAllOnFocus(true);input.setText(startup?home:"");input.setPadding(dp(12),0,dp(12),0);
+        input.setSelectAllOnFocus(true);input.setText(startup?(current.isEmpty()?home:current):"");input.setPadding(dp(12),0,dp(12),0);
         input.setContentDescription(startup?"启动网址":"打开 URL");
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_URI);
         input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO|android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
