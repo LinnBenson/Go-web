@@ -17,7 +17,17 @@
    <intent-filter><action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"/></intent-filter>
    <meta-data android:name="android.support.wearable.complications.SUPPORTED_TYPES" android:value="ICON,SMALL_IMAGE"/>
    <meta-data android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS" android:value="0"/>
+   <meta-data android:name="android.support.wearable.complications.PROVIDER_CONFIG_ACTION" android:value="io.todu.goweb.CONFIGURE_COMPLICATION"/>
+   <meta-data android:name="androidx.watchface.complications.datasource.DEFAULT_CONFIG_SUPPORTED" android:value="true"/>
   </service>
+  <activity android:name=".ComplicationConfigActivity" android:process=":shortcut"
+      android:exported="true" android:excludeFromRecents="true" android:noHistory="true" android:label="@string/complication_choose_icon">
+   <intent-filter>
+    <action android:name="io.todu.goweb.CONFIGURE_COMPLICATION"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <category android:name="android.support.wearable.complications.category.PROVIDER_CONFIG"/>
+   </intent-filter>
+  </activity>
   <activity android:name=".VaultActivity" android:exported="false" android:excludeFromRecents="true" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
   <activity android:theme="@style/GoBrowserTheme" android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:taskAffinity="" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>

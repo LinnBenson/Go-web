@@ -52,11 +52,12 @@ public final class BrowserApplication extends Application implements Application
         // End this user session; START_NOT_STICKY prevents a download restart.
         android.os.Process.killProcess(android.os.Process.myPid());
     };
-    @Override public void onActivityCreated(Activity a,Bundle state){activities.add(a);used=true;}
-    @Override public void onActivityStarted(Activity a){visible.add(a);foregroundEntered();}
-    @Override public void onActivityStopped(Activity a){visible.remove(a);if(visible.isEmpty()){handler.removeCallbacks(background);if(explicitExit){handler.removeCallbacks(releaseProcess);handler.postDelayed(releaseProcess,1000);}else handler.postDelayed(background,700);}}
+    // The icon picker is not a browser session; never schedule browser cleanup in :shortcut.
+    @Override public void onActivityCreated(Activity a,Bundle state){if(a instanceof ComplicationConfigActivity)return;activities.add(a);used=true;}
+    @Override public void onActivityStarted(Activity a){if(a instanceof ComplicationConfigActivity)return;visible.add(a);foregroundEntered();}
+    @Override public void onActivityStopped(Activity a){if(a instanceof ComplicationConfigActivity)return;visible.remove(a);if(visible.isEmpty()){handler.removeCallbacks(background);if(explicitExit){handler.removeCallbacks(releaseProcess);handler.postDelayed(releaseProcess,1000);}else handler.postDelayed(background,700);}}
     @Override public void onActivityDestroyed(Activity a){activities.remove(a);visible.remove(a);}
-    @Override public void onActivityResumed(Activity a){visible.add(a);foregroundEntered();}
+    @Override public void onActivityResumed(Activity a){if(a instanceof ComplicationConfigActivity)return;visible.add(a);foregroundEntered();}
     @Override public void onActivityPaused(Activity a){}
     @Override public void onActivitySaveInstanceState(Activity a,Bundle out){}
 }

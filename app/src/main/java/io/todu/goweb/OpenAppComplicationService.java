@@ -10,14 +10,15 @@ import androidx.wear.watchface.complications.datasource.ComplicationRequest;
 /** Static launcher shortcut: no browser initialization, network or periodic work. */
 public final class OpenAppComplicationService extends ComplicationDataSourceService {
     @Override public void onComplicationRequest(ComplicationRequest request, ComplicationRequestListener listener) {
-        try { listener.onComplicationData(data(request.getComplicationType(), true)); }
+        try { listener.onComplicationData(data(request.getComplicationType(), true, ComplicationIcons.DRAWABLES[
+            ComplicationIcons.selected(this, request.getComplicationInstanceId())])); }
         catch (android.os.RemoteException disconnected) { /* Watch face disconnected. */ }
     }
     @Override public ComplicationData getPreviewData(ComplicationType type) {
-        return data(type, false);
+        return data(type, false, R.drawable.ic_complication_go);
     }
-    private ComplicationData data(ComplicationType type, boolean actionable) {
-        Icon icon=Icon.createWithResource(this,R.drawable.ic_complication_go);
+    private ComplicationData data(ComplicationType type, boolean actionable, int drawable) {
+        Icon icon=Icon.createWithResource(this,drawable);
         PlainComplicationText description=new PlainComplicationText.Builder("打开 Go web").build();
         PendingIntent tap=null;
         if(actionable){

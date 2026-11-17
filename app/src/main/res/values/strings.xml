@@ -1,1 +1,9 @@
-<resources><string name="zoom_percent">%1$d%%</string></resources>
+<resources><string name="zoom_percent">%1$d%%</string>
+<string name="complication_choose_icon">选择图标</string>
+<string name="complication_classic">经典</string>
+<string name="complication_wordmark">Go</string>
+<string name="complication_globe">地球</string>
+<string name="complication_window">窗口</string>
+<string name="complication_navigate">导航</string>
+<string name="complication_selected">，已选</string>
+</resources>
