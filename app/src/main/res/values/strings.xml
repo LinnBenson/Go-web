@@ -6,4 +6,11 @@
 <string name="complication_window">窗口</string>
 <string name="complication_navigate">导航</string>
 <string name="complication_selected">，已选</string>
+<string name="complication_saturn">星环</string>
+<string name="complication_bot">小机灵</string>
+<string name="complication_spark">星芒</string>
+<string name="complication_puppy">小狗</string>
+<string name="complication_ufo">小飞碟</string>
+<string name="complication_cat">小猫</string>
+<string name="complication_bear">小熊</string>
 </resources>
